@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -8,6 +9,9 @@ const app = express();
 // Gelen verileri okuma ve izin ayarları
 app.use(express.json());
 app.use(cors());
+
+// Statik dosyaları (HTML, CSS, JS) dışarıya açar
+app.use(express.static(__dirname));
 
 // MongoDB Veritabanı Bağlantısı
 mongoose.connect(process.env.MONGO_URI)
@@ -22,6 +26,11 @@ const UserSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', UserSchema);
+
+// --- ANA SAYFA YÖNLENDİRMESİ ---
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // --- 1. KAYIT OL (REGISTER) API ---
 app.post('/api/register', async (req, res) => {
@@ -65,6 +74,11 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// Sunucuyu Başlat
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`🚀 Sunucu http://localhost:${PORT} adresinde çalışıyor!`);
+});
 // Sunucuyu Başlat
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
