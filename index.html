@@ -14,27 +14,108 @@
         <a href="index.html" class="nav-link">Home</a>
         <a href="register.html" class="nav-link">Register</a>
         <a href="login.html" class="nav-link">Login</a>
-        <div class="user-profile-box" onclick="window.location.href='profile.html'">
-        <span id="nav-username">user</span>
-        <div class="profile-circle" id="nav-avatar">U</div>
-    </div>
         
+        <!-- Yönlendirme ve metin JS tarafından dinamiğe bağlandı -->
+        <div class="user-profile-box" id="profileBox">
+            <span id="nav-username">Giriş Yap</span>
+            <div class="profile-circle" id="nav-avatar">🔑</div>
+        </div>
     </nav>
 
     <!-- Sayfa İçeriği -->
-    <main style="padding: 20px;">
-        <h1>Ana Sayfaya Hoş Geldiniz!</h1>
-        <p>içeriklerimiz burada olacak:).</p>
-    
-    </main>
+    <main class="main-content">
+    <!-- Karşılama Alanı -->
+    <section class="hero">
+        <h1>Sanat Alanımıza Hoş Geldiniz ✨</h1>
+        <p>Birlikte öğrenmek, üretmek ve keyifli vakit geçirmek için dilediğin paneli seç!</p>
+    </section>
+
+    <!-- İki Ana Panel Seçeneği -->
+    <section class="panels-container">
+        <!-- Panel 1: Eğitim -->
+        <div class="panel-card education">
+            <div class="panel-icon">🎨</div>
+            <h2>Eğitim Paneli</h2>
+            <p>Çizim, dijital sanat ve teknikleri içeren videolu eğitim içerikleri.</p>
+            <a href="education.html" class="panel-btn">Eğitimlere Git</a>
+        </div>
+
+        <!-- Panel 2: Eğlence & Sohbet -->
+        <div class="panel-card entertainment">
+            <div class="panel-icon">💬</div>
+            <h2>Eğlence & Sohbet</h2>
+            <p>Sohbet etmek, fikir paylaşmak ve eğlenceli vakit geçirmek için.</p>
+            <a href="chat.html" class="panel-btn">Sohbete Katıl</a>
+        </div>
+    </section>
+</main>
+
 <script>
   window.addEventListener('DOMContentLoaded', () => {
-      const savedUser = localStorage.getItem('loggedInUser');
-      if (savedUser) {
-          document.getElementById('nav-username').textContent = savedUser;
-          document.getElementById('nav-avatar').textContent = savedUser.charAt(0).toUpperCase();
+      const loggedInUser = localStorage.getItem('loggedInUser');
+      const profileBox = document.getElementById('profileBox');
+      const navUsername = document.getElementById('nav-username');
+      const navAvatar = document.getElementById('nav-avatar');
+
+      if (loggedInUser) {
+          // 1. KULLANICI GİRİŞ YAPMIŞSA:
+          navUsername.textContent = loggedInUser;
+          navAvatar.textContent = loggedInUser.charAt(0).toUpperCase();
+          
+          // Profil kutusuna tıklandığında Profil Sayfasına git
+          profileBox.onclick = () => {
+              window.location.href = 'profile.html';
+          };
+      } else {
+          // 2. KULLANICI GİRİŞ YAPMAMIŞSA:
+          navUsername.textContent = 'Giriş Yap';
+          navAvatar.textContent = '🔑';
+          
+          // Profil kutusuna tıklandığında Login Sayfasına git
+          profileBox.onclick = () => {
+              window.location.href = 'login.html';
+          };
       }
   });
+
+  // Çıkış Yap Fonksiyonu (Profil sayfasında veya ihtiyaç duyulan yerde kullanılabilir)
+  function logout() {
+      localStorage.removeItem('loggedInUser');
+      localStorage.removeItem('loggedInEmail');
+      window.location.href = 'login.html';
+  }
+      
+    // Form gönderildiğinde çalışacak fonksiyon
+async function kayitOl(event) {
+    event.preventDefault(); // Sayfanın yenilenmesini engeller
+
+    // Formdaki girdileri alıyoruz
+    const username = document.getElementById('username').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    try {
+        // Render üzerindeki CANLI sunucuna istek atıyoruz
+        const response = await fetch('https://my-web-s2fy.onrender.com/api/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, email, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('✅ ' + data.message); // Kayıt başarılı!
+        } else {
+            alert('❌ ' + data.message); // Hata mesajı (Örn: E-posta zaten kullanımda)
+        }
+    } catch (error) {
+        console.error('Hata:', error);
+        alert('Sunucuya bağlanılamadı! Lütfen tekrar deneyin.');
+    }
+}
 </script>
 </body>
 </html>
