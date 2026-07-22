@@ -10,7 +10,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Statik dosyaları (HTML, CSS, JS) dışarıya açar
+// Statik dosyaları dışarıya açar
 app.use(express.static(__dirname));
 
 // MongoDB Veritabanı Bağlantısı
@@ -52,7 +52,7 @@ app.post('/api/register', async (req, res) => {
 });
 
 // --- 2. GİRİŞ YAP (LOGIN) API ---
-app.post('/api/login', async (req, res) => {
+app.post('/api/register/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -74,11 +74,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// Sunucuyu Başlat
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`🚀 Sunucu http://localhost:${PORT} adresinde çalışıyor!`);
-});
 // Sunucuyu Başlat
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
