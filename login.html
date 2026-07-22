@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Giriş Yap - Web Sitem</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Üst Menü -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-link">Home</a>
+        <a href="register.html" class="nav-link">Register</a>
+        <a href="login.html" class="nav-link">Login</a>
+    </nav>
+
+    <!-- Giriş Formu Kutusu -->
+    <main class="form-container">
+        <h2>Giriş Yap</h2>
+        <form id="loginForm">
+            <div class="input-group">
+                <label for="email">E-posta Adresi</label>
+                <input type="email" id="email" placeholder="ornek@email.com" required>
+            </div>
+
+            <div class="input-group">
+                <label for="password">Şifre</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="password" id="password" placeholder="Şifrenizi girin" required style="flex: 1;">
+                    <button type="button" id="togglePasswordBtn" style="padding: 0 10px; cursor: pointer;">👁️</button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn">Giriş Yap</button>
+        </form>
+    </main>
+
+    <script>
+      // Şifre Göster / Gizle Butonu
+      document.getElementById('togglePasswordBtn').addEventListener('click', function () {
+          const passwordInput = document.getElementById('password');
+          if (passwordInput.type === 'password') {
+              passwordInput.type = 'text';
+              this.textContent = '🙈';
+          } else {
+              passwordInput.type = 'password';
+              this.textContent = '👁️';
+          }
+      });
+
+      // Giriş Yap İşlemi
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const email = document.querySelector('#email').value;
+          const password = document.querySelector('#password').value;
+
+          try {
+              const response = await fetch('http://localhost:5000/api/login', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email, password })
+              });
+
+              const data = await response.json();
+
+              if (response.ok) {
+                  localStorage.setItem('loggedInUser', data.user.username);
+                  localStorage.setItem('loggedInEmail', data.user.email);
+
+                  alert(`Hoş geldin ${data.user.username}!`);
+                  window.location.href = 'index.html'; 
+              } else {
+                  alert(data.message || 'Giriş başarısız!');
+              }
+          } catch (error) {
+              console.error('Hata:', error);
+              alert('Sunucuya bağlanılamadı! Node.js (server.js) çalışıyor mu?');
+          }
+      });
+    </script>
+
+</body>
+</html>

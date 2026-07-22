@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İlk Web Sitem</title>
+    <!-- Stil dosyamızı bağladığımız yer -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Üst Menü (Navbar) -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-link">Home</a>
+        <a href="register.html" class="nav-link">Register</a>
+        <a href="login.html" class="nav-link">Login</a>
+        <div class="user-profile-box" onclick="window.location.href='profile.html'">
+        <span id="nav-username">user</span>
+        <div class="profile-circle" id="nav-avatar">U</div>
+    </div>
+        
+    </nav>
+
+    <!-- Sayfa İçeriği -->
+    <main style="padding: 20px;">
+        <h1>Ana Sayfaya Hoş Geldiniz!</h1>
+        <p>içeriklerimiz burada olacak:).</p>
+    
+    </main>
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = localStorage.getItem('loggedInUser');
+      if (savedUser) {
+          document.getElementById('nav-username').textContent = savedUser;
+          document.getElementById('nav-avatar').textContent = savedUser.charAt(0).toUpperCase();
+      }
+  });
+</script>
+</body>
+</html>
