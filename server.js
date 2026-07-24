@@ -2,18 +2,30 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const multer = require('multer'); // Dosya yükleme kütüphanesi
 require('dotenv').config();
 
 const app = express();
 
-// Gelen verileri okuma ve izin ayarları
+// --- 1. OTOMATİK KLASÖR KONTROLÜ ---
+// 'videos' klasörü yoksa sunucu başlarken hata vermemesi için otomatik oluşturur
+const uploadDir = path.join(__dirname, 'videos');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Gelen verileri okuma ve izin ayarları (CORS Tam İzin)
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Statik Dosya Sunumu (HTML, CSS, JS ve Yüklenen Videolar)
 app.use(express.static(__dirname));
-app.use('/videos', express.static(path.join(__dirname, 'videos'))); // videos klasörünü dışarıya açar
+app.use('/videos', express.static(uploadDir)); // videos klasörünü dışarıya açar
 
 // MongoDB Veritabanı Bağlantısı
 mongoose.connect(process.env.MONGO_URI)
@@ -31,7 +43,7 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', UserSchema);
 
-// Video Şeması (Yüklenen videolar veritabanında saklanır)
+// Video Şeması
 const VideoSchema = new mongoose.Schema({
     seriesId:    { type: String, required: true }, // Örn: 'digital-art'
     title:       { type: String, required: true },
@@ -50,7 +62,6 @@ const storage = multer.diskStorage({
         cb(null, 'videos/'); // Yüklenen dosyaların kaydedileceği klasör
     },
     filename: function (req, file, cb) {
-        // Çakışmayı önlemek için dosya adının başına benzersiz bir zaman damgası ekliyoruz
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const ext = path.extname(file.originalname);
         cb(null, 'video-' + uniqueSuffix + ext);
@@ -134,7 +145,7 @@ app.post('/api/upload-video', upload.single('videoFile'), async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: 'Video sunucudaki "videos" klasörüne kaydedildi ve veritabanına eklendi!',
+            message: 'Video kaydedildi ve veritabanına eklendi!',
             video: newVideo
         });
     } catch (error) {
@@ -144,7 +155,7 @@ app.post('/api/upload-video', upload.single('videoFile'), async (req, res) => {
 });
 
 
-// --- TÜM VİDEOLARI GETİRME API (Education Sayfası İçin) ---
+// --- TÜM VİDEOLARI GETİRME API ---
 app.get('/api/videos', async (req, res) => {
     try {
         const videos = await Video.find();
@@ -155,8 +166,10 @@ app.get('/api/videos', async (req, res) => {
 });
 
 
-// Sunucuyu Başlat
+// --- SUNUCUYU BAŞLAT (HER YERDEN ERİŞİM İÇİN '0.0.0.0' EKLENDİ) ---
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`🚀 Sunucu http://localhost:${PORT} adresinde çalışıyor!`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Sunucu çalışıyor!`);
+    console.log(`💻 Bilgisayardan: http://localhost:${PORT}`);
+    console.log(`📱 Telefondan yerel erişim: http://<BILGISAYAR_IP_ADRESINIZ>:${PORT}`);
 });
