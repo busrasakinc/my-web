@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eğitim Paneli - Sanat Sitesi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Üst Menü -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-link">Home</a>
+        <a href="education.html" class="nav-link active">Eğitimler</a>
+        <a href="chat.html" class="nav-link">Sohbet</a>
+        <a href="upload.html" class="nav-link">Video Yükle</a>
+        
+        <div class="user-profile-box" id="profileBox" style="cursor: pointer;">
+            <span id="nav-username">Giriş Yap</span>
+            <div class="profile-circle" id="nav-avatar">🔑</div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <h1 style="margin-bottom: 10px;">🎨 Sanat Eğitim Serileri</h1>
+        <p style="color: #666; margin-bottom: 30px;">Öğrenmek istediğiniz eğitim serisini seçin ve derslere başlayın!</p>
+
+        <!-- 1. AŞAMA: EĞİTİM SERİLERİ (KLASÖRLER) -->
+        <div class="series-grid" id="seriesContainer"></div>
+
+        <!-- 2. AŞAMA: SERİ İÇİNDEKİ VİDEO LİSTESİ (Başta Gizli) -->
+        <div class="video-list-container" id="videoListContainer" style="display: none;">
+            <button class="back-btn" onclick="closeSeries()">← Tüm Serilere Dön</button>
+            <h2 id="currentSeriesTitle" style="margin: 20px 0 10px 0;"></h2>
+
+            <!-- Videolar Buraya JS Tarafından Yüklenecek -->
+            <div class="video-cards-grid" id="videoCardsGrid"></div>
+        </div>
+
+        <!-- 3. AŞAMA: VİDEO OYNATICI POP-UP / MODAL -->
+        <div class="video-modal" id="videoModal" style="display: none;">
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeVideo()">&times;</span>
+                
+                <!-- YEREL HTML5 OYNATICI -->
+                <div class="video-player-wrapper">
+                    <video id="localVideoPlayer" controls controlsList="nodownload" style="width: 100%; max-height: 450px; background: #000; border-radius: 8px;">
+                        <source id="localVideoSource" src="" type="video/mp4">
+                        Tarayıcınız video oynatmayı desteklemiyor.
+                    </video>
+                </div>
+
+                <div class="modal-info-box">
+                    <h3 id="modalVideoTitle">Video Başlığı</h3>
+                    <p id="modalVideoDesc">Video açıklaması burada yer alacak.</p>
+                    <span class="video-date" id="modalVideoDate">🗓️ Yüklenme Tarihi: --</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+<script>
+    // Global veri deposu
+    let globalCoursesData = {};
+
+    // Sayfa Yüklendiğinde Oturum Kontrolü ve Serileri Ekrana Basma
+    window.addEventListener('DOMContentLoaded', async () => {
+        const loggedInUser = localStorage.getItem('loggedInUser');
+        const profileBox = document.getElementById('profileBox');
+        const navUsername = document.getElementById('nav-username');
+        const navAvatar = document.getElementById('nav-avatar');
+
+        if (loggedInUser) {
+            navUsername.textContent = loggedInUser;
+            navAvatar.textContent = loggedInUser.charAt(0).toUpperCase();
+            profileBox.onclick = () => window.location.href = 'profile.html';
+        } else {
+            navUsername.textContent = 'Giriş Yap';
+            navAvatar.textContent = '🔑';
+            profileBox.onclick = () => window.location.href = 'login.html';
+        }
+
+        await serileriEkranaBas();
+    });
+
+    // SUNUCU (MongoDB) + LOCALSTORAGE VERİLERİNİ BİRLEŞTİREN ASENKRON FONKSİYON
+    async function getCombinedCoursesData() {
+        let baseData = {
+            'digital-art': {
+                title: "📁 Dijital Sanata Giriş Serisi",
+                description: "Tablet kullanımı, fırça ayarları ve temel çizim teknikleri.",
+                videos: [
+                    {
+                        title: "Ders 1: Arayüz ve Temel Araçlar",
+                        description: "Bu derste çizim programının arayüzünü ve fırçaları öğreniyoruz.",
+                        duration: "10 Dakika",
+                        date: "20.10.2025",
+                        videoPath: "videos/ders1.mp4"
+                    }
+                ]
+            },
+            'color-theory': {
+                title: "🎨 Renk Teorisi & Işık Serisi",
+                description: "Renk çemberi, gölgelendirme ve atmosfer oluşturma.",
+                videos: []
+            }
+        };
+
+        // 1. Oluşturulan Özel Serileri Yükle
+        const customSeries = JSON.parse(localStorage.getItem('customSeries')) || [];
+        customSeries.forEach(series => {
+            if (!baseData[series.id]) {
+                baseData[series.id] = {
+                    title: "📁 " + series.title,
+                    description: series.desc || 'Eğitim serisi ve ders içerikleri.',
+                    videos: []
+                };
+            }
+        });
+
+        // 2. Sunucudan (MongoDB) Videoları Çek
+        try {
+            const response = await fetch('/api/videos');
+            const data = await response.json();
+
+            if (data.success && data.videos) {
+                data.videos.forEach(vid => {
+                    // Eğer serisi varsa içine ekle, yoksa yeni seri olarak oluştur
+                    if (!baseData[vid.seriesId]) {
+                        baseData[vid.seriesId] = {
+                            title: "📁 Yüklenen Seri (" + vid.seriesId + ")",
+                            description: "Sunucudan yüklenen ders serisi.",
+                            videos: []
+                        };
+                    }
+                    baseData[vid.seriesId].videos.push({
+                        title: vid.title,
+                        description: vid.description,
+                        duration: vid.duration || 'Yeni Video',
+                        date: vid.date,
+                        videoPath: vid.videoPath
+                    });
+                });
+            }
+        } catch (error) {
+            console.error("Sunucudan videolar çekilemedi:", error);
+        }
+
+        return baseData;
+    }
+
+    // Serileri Ana Ekrana Çizen Fonksiyon
+    async function serileriEkranaBas() {
+        const container = document.getElementById('seriesContainer');
+        globalCoursesData = await getCombinedCoursesData();
+
+        container.innerHTML = '';
+
+        Object.keys(globalCoursesData).forEach(key => {
+            const series = globalCoursesData[key];
+            const videoCount = series.videos.length;
+
+            const card = document.createElement('div');
+            card.className = 'series-card';
+            card.onclick = () => openSeries(key);
+            card.innerHTML = `
+                <div class="series-icon">📁</div>
+                <div class="series-badge">${videoCount} Ders</div>
+                <h3>${series.title.replace('📁 ', '')}</h3>
+                <p>${series.description || 'Eğitim serisi ve ders içerikleri.'}</p>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // 1. Seriye Tıklanınca Videoları Listele
+    function openSeries(seriesKey) {
+        const seriesData = globalCoursesData[seriesKey];
+        if (!seriesData) return;
+
+        document.getElementById('seriesContainer').style.display = 'none';
+        document.getElementById('videoListContainer').style.display = 'block';
+        document.getElementById('currentSeriesTitle').innerText = seriesData.title;
+
+        const grid = document.getElementById('videoCardsGrid');
+        grid.innerHTML = '';
+
+        if (seriesData.videos.length === 0) {
+            grid.innerHTML = '<p style="color: #888; grid-column: 1/-1;">Bu seride henüz yayınlanmış bir video yok.</p>';
+            return;
+        }
+
+        seriesData.videos.forEach((video) => {
+            const videoCard = document.createElement('div');
+            videoCard.className = 'video-info-card';
+            videoCard.style.cursor = 'pointer';
+            
+            videoCard.addEventListener('click', () => {
+                playVideo(video.videoPath, video.title, video.description, video.date);
+            });
+            
+            videoCard.innerHTML = `
+                <div class="card-preview">
+                    <span>▶️ Videoyu İzle</span>
+                </div>
+                <div class="card-details">
+                    <h4>${video.title}</h4>
+                    <p>${video.description}</p>
+                    <div class="card-meta">
+                        <span>⏱️ ${video.duration}</span>
+                        <span>🗓️ ${video.date}</span>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(videoCard);
+        });
+    }
+
+    // 2. Seri Listesinden Geri Dönüş
+    function closeSeries() {
+        document.getElementById('seriesContainer').style.display = 'grid';
+        document.getElementById('videoListContainer').style.display = 'none';
+    }
+
+    // 3. Videoya Tıklanınca Aç ve Oynat
+    function playVideo(filePath, title, desc, date) {
+        console.log("Oynatılacak Dosya Yolu:", filePath);
+
+        const player = document.getElementById('localVideoPlayer');
+        const source = document.getElementById('localVideoSource');
+
+        // Yolu bağla ve tarayıcıya yeniden yüklet
+        source.src = filePath;
+        player.load(); 
+
+        document.getElementById('modalVideoTitle').innerText = title;
+        document.getElementById('modalVideoDesc').innerText = desc;
+        document.getElementById('modalVideoDate').innerText = '🗓️ Yüklenme Tarihi: ' + date;
+        
+        document.getElementById('videoModal').style.display = 'flex';
+
+        player.play().catch(err => {
+            console.log("Video oynatılamadı:", err);
+        });
+    }
+
+    // 4. Pop-up Kapatılınca Videoyu Durdur
+    function closeVideo() {
+        const player = document.getElementById('localVideoPlayer');
+        player.pause();
+        document.getElementById('videoModal').style.display = 'none';
+    }
+</script>
+</body>
+</html>

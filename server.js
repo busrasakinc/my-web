@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const multer = require('multer'); // Dosya yükleme kütüphanesi
 require('dotenv').config();
 
 const app = express();
@@ -10,15 +11,18 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Statik dosyaları dışarıya açar
+// Statik Dosya Sunumu (HTML, CSS, JS ve Yüklenen Videolar)
 app.use(express.static(__dirname));
+app.use('/videos', express.static(path.join(__dirname, 'videos'))); // videos klasörünü dışarıya açar
 
 // MongoDB Veritabanı Bağlantısı
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('✅ MongoDB Veritabanına Başarıyla Bağlanıldı!'))
     .catch(err => console.error('❌ Veritabanı Bağlantı Hatası:', err));
 
-// Kullanıcı Model Şeması
+// --- MONGODB ŞEMALARI (MODELS) ---
+
+// Kullanıcı Şeması
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true },
     email:    { type: String, required: true, unique: true },
@@ -27,12 +31,42 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', UserSchema);
 
+// Video Şeması (Yüklenen videolar veritabanında saklanır)
+const VideoSchema = new mongoose.Schema({
+    seriesId:    { type: String, required: true }, // Örn: 'digital-art'
+    title:       { type: String, required: true },
+    description: { type: String, default: '' },
+    duration:    { type: String, default: 'Yeni Video' },
+    date:        { type: String, required: true },
+    videoPath:   { type: String, required: true }  // Örn: 'videos/video-12345.mp4'
+});
+
+const Video = mongoose.model('Video', VideoSchema);
+
+
+// --- MULTER DOSYA YÜKLEME AYARLARI ---
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'videos/'); // Yüklenen dosyaların kaydedileceği klasör
+    },
+    filename: function (req, file, cb) {
+        // Çakışmayı önlemek için dosya adının başına benzersiz bir zaman damgası ekliyoruz
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, 'video-' + uniqueSuffix + ext);
+    }
+});
+
+const upload = multer({ storage: storage });
+
+
 // --- ANA SAYFA YÖNLENDİRMESİ ---
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- 1. KAYIT OL (REGISTER) API ---
+
+// --- KAYIT OL (REGISTER) API ---
 app.post('/api/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -51,8 +85,9 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// --- 2. GİRİŞ YAP (LOGIN) API ---
-app.post('/api/register/login', async (req, res) => {
+
+// --- GİRİŞ YAP (LOGIN) API ---
+app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -73,6 +108,52 @@ app.post('/api/register/login', async (req, res) => {
         res.status(500).json({ message: 'Sunucu hatası oluştu.' });
     }
 });
+
+
+// --- VİDEO YÜKLEME API ---
+app.post('/api/upload-video', upload.single('videoFile'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Lütfen bir video dosyası seçin.' });
+        }
+
+        const { seriesId, title, description } = req.body;
+        const videoPath = 'videos/' + req.file.filename;
+        const today = new Date().toLocaleDateString('tr-TR');
+
+        // MongoDB'ye Video Bilgilerini Kaydet
+        const newVideo = new Video({
+            seriesId: seriesId,
+            title: title,
+            description: description,
+            date: today,
+            videoPath: videoPath
+        });
+
+        await newVideo.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Video sunucudaki "videos" klasörüne kaydedildi ve veritabanına eklendi!',
+            video: newVideo
+        });
+    } catch (error) {
+        console.error('Video yükleme hatası:', error);
+        res.status(500).json({ success: false, message: 'Video yüklenirken sunucu hatası oluştu.' });
+    }
+});
+
+
+// --- TÜM VİDEOLARI GETİRME API (Education Sayfası İçin) ---
+app.get('/api/videos', async (req, res) => {
+    try {
+        const videos = await Video.find();
+        res.status(200).json({ success: true, videos: videos });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Videolar getirilemedi.' });
+    }
+});
+
 
 // Sunucuyu Başlat
 const PORT = process.env.PORT || 5000;

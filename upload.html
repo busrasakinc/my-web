@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Yükleme Paneli - Sanat Sitesi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Üst Menü -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-link">Home</a>
+        <a href="education.html" class="nav-link">Eğitimler</a>
+        <a href="chat.html" class="nav-link">Sohbet</a>
+        <a href="upload.html" class="nav-link active">Video Yükle</a>
+        
+        <div class="user-profile-box" id="profileBox" style="cursor: pointer;">
+            <span id="nav-username">Giriş Yap</span>
+            <div class="profile-circle" id="nav-avatar">🔑</div>
+        </div>
+    </nav>
+
+    <main class="main-content" style="max-width: 800px; margin: 40px auto; padding: 20px;">
+        <h1 style="margin-bottom: 10px;">🎬 İçerik & Video Yönetim Paneli</h1>
+        <p style="color: #666; margin-bottom: 30px;">Buradan yeni eğitim serileri oluşturabilir ve videolarınızı yükleyebilirsiniz.</p>
+
+        <!-- 1. ADIM: YENİ EĞİTİM SERİSİ (KLASÖR) OLUŞTURMA -->
+        <section class="upload-section-card" style="background: #fff; padding: 25px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h2>📁 1. Yeni Eğitim Serisi Oluştur</h2>
+            <form id="createSeriesForm" style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                <input type="text" id="seriesTitle" placeholder="Seri/Klasör Adı (Örn: Dijital Çizim 101)" required style="padding: 12px; border-radius: 6px; border: 1px solid #ccc;">
+                <textarea id="seriesDesc" placeholder="Seri Hakkında Kısa Açıklama..." rows="3" required style="padding: 12px; border-radius: 6px; border: 1px solid #ccc;"></textarea>
+                <button type="submit" class="panel-btn" style="background: #28a745; width: fit-content; padding: 10px 20px; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">+ Seriyi Oluştur</button>
+            </form>
+        </section>
+
+        <!-- 2. ADIM: SERİYE VİDEO YÜKLEME -->
+        <section class="upload-section-card" style="background: #fff; padding: 25px; border-radius: 12px; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h2>➕ 2. Seriye Video Ekle</h2>
+            <form id="uploadVideoForm" style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                
+                <!-- Hangi seriye eklenecek? -->
+                <label style="font-weight: bold; color: #333;">Yüklemek İstediğiniz Seri:</label>
+                <select id="seriesSelect" required style="padding: 12px; border-radius: 6px; border: 1px solid #ccc; background: #fff;">
+                    <option value="">-- Lütfen Bir Seri Seçin --</option>
+                </select>
+
+                <input type="text" id="videoTitle" placeholder="Video/Ders Başlığı" required style="padding: 12px; border-radius: 6px; border: 1px solid #ccc;">
+                <textarea id="videoDesc" placeholder="Ders Açıklaması ve Notlar..." rows="3" required style="padding: 12px; border-radius: 6px; border: 1px solid #ccc;"></textarea>
+                
+                <!-- BİLGİSAYARDAN / TELEFONDAN DOSYA SEÇME -->
+                <label style="font-weight: bold; color: #333;">Video Dosyası Seçin (.mp4, .mkv, .mov vb.):</label>
+                <input type="file" id="videoFile" accept=".mp4,.mkv,.mov,.avi,.webm,video/*" required style="padding: 12px; background: #f8f9fa; border: 2px dashed #007bff; border-radius: 6px; cursor: pointer;">
+
+                <!-- Seçilen Dosya Bilgisi Kutusu -->
+                <div id="fileInfoBox" style="display: none; background: #e8f5e9; color: #2e7d32; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold;"></div>
+
+                <button type="submit" id="submitBtn" class="panel-btn" style="margin-top: 10px; padding: 12px; background: #007bff; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">🚀 Videoyu Yayınla</button>
+            </form>
+        </section>
+    </main>
+
+<script>
+    // Navbar Kullanıcı Durumu Kontrolü
+    window.addEventListener('DOMContentLoaded', () => {
+        const loggedInUser = localStorage.getItem('loggedInUser');
+        const profileBox = document.getElementById('profileBox');
+        const navUsername = document.getElementById('nav-username');
+        const navAvatar = document.getElementById('nav-avatar');
+
+        if (loggedInUser) {
+            navUsername.textContent = loggedInUser;
+            navAvatar.textContent = loggedInUser.charAt(0).toUpperCase();
+            profileBox.onclick = () => window.location.href = 'profile.html';
+        } else {
+            navUsername.textContent = 'Giriş Yap';
+            navAvatar.textContent = '🔑';
+            profileBox.onclick = () => window.location.href = 'login.html';
+        }
+
+        serileriYukle();
+    });
+
+    // 1. Serileri Select Menüsüne Yükleyen Fonksiyon
+    function serileriYukle() {
+        const seriesSelect = document.getElementById('seriesSelect');
+        
+        let savedSeries = JSON.parse(localStorage.getItem('customSeries')) || [
+            { id: 'digital-art', title: 'Dijital Sanata Giriş' },
+            { id: 'color-theory', title: 'Renk Teorisi & Işık' }
+        ];
+
+        seriesSelect.innerHTML = '<option value="">-- Lütfen Bir Seri Seçin --</option>';
+
+        savedSeries.forEach(series => {
+            const option = document.createElement('option');
+            option.value = series.id;
+            option.textContent = series.title;
+            seriesSelect.appendChild(option);
+        });
+    }
+
+    // 2. Yeni Seri Oluşturma
+    document.getElementById('createSeriesForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const titleInput = document.getElementById('seriesTitle');
+        const descInput = document.getElementById('seriesDesc');
+        
+        const title = titleInput.value.trim();
+        const desc = descInput.value.trim();
+        const id = 'series-' + Date.now();
+
+        if (!title) return;
+
+        let savedSeries = JSON.parse(localStorage.getItem('customSeries')) || [
+            { id: 'digital-art', title: 'Dijital Sanata Giriş' },
+            { id: 'color-theory', title: 'Renk Teorisi & Işık' }
+        ];
+
+        savedSeries.push({ id, title, desc });
+        localStorage.setItem('customSeries', JSON.stringify(savedSeries));
+
+        serileriYukle();
+        document.getElementById('seriesSelect').value = id;
+
+        titleInput.value = '';
+        descInput.value = '';
+        alert(`✅ "${title}" serisi oluşturuldu ve aşağıdaki seçim listesine eklendi!`);
+    });
+
+    // 3. Dosya Seçildiğinde Bilgi Gösterme
+    document.getElementById('videoFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const infoBox = document.getElementById('fileInfoBox');
+        
+        if (file) {
+            const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+            infoBox.innerText = `📁 Seçilen Dosya: ${file.name} (${sizeInMB} MB)`;
+            infoBox.style.display = 'block';
+        } else {
+            infoBox.style.display = 'none';
+        }
+    });
+
+    // 4. SUNUCUYA OTOMATİK VİDEO YÜKLEME (FETCH / MULTER)
+    document.getElementById('uploadVideoForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const selectedSeriesId = document.getElementById('seriesSelect').value;
+        const videoTitle = document.getElementById('videoTitle').value;
+        const videoDesc = document.getElementById('videoDesc').value;
+        const fileInput = document.getElementById('videoFile');
+        const submitBtn = document.getElementById('submitBtn');
+
+        if (!selectedSeriesId || fileInput.files.length === 0) {
+            alert('Lütfen bir seri ve video dosyası seçin!');
+            return;
+        }
+
+        const file = fileInput.files[0];
+
+        // Form Verisini Hazırlama (Backend'in beklediği format)
+        const formData = new FormData();
+        formData.append('seriesId', selectedSeriesId);
+        formData.append('title', videoTitle);
+        formData.append('description', videoDesc);
+        formData.append('videoFile', file); // Multer bu ismi yakalıyor
+
+        // Butonu "Yükleniyor..." durumuna getir
+        submitBtn.disabled = true;
+        submitBtn.innerText = '⏳ Video Yükleniyor, Lütfen Bekleyin...';
+        submitBtn.style.background = '#6c757d';
+
+        try {
+            // Sunucuya POST isteği
+            const response = await fetch('/api/upload-video', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`🎉 TEBRİKLER! Video sunucuya yüklendi ve otomatik olarak "videos/" klasörüne kaydedildi.`);
+                
+                // Formu Temizle
+                document.getElementById('uploadVideoForm').reset();
+                document.getElementById('fileInfoBox').style.display = 'none';
+            } else {
+                alert('❌ Yükleme Hatası: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Yükleme sırasında hata:', error);
+            alert('❌ Sunucuya bağlanırken bir hata oluştu.');
+        } finally {
+            // Butonu eski haline getir
+            submitBtn.disabled = false;
+            submitBtn.innerText = '🚀 Videoyu Yayınla';
+            submitBtn.style.background = '#007bff';
+        }
+    });
+</script>
+</body>
+</html>
